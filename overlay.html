@@ -1,0 +1,254 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <title>PNGTuber Overlay</title>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      body {
+        background: transparent;
+        overflow: hidden;
+        width: 100vw;
+        height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      #avatar {
+        max-width: 80%;
+        max-height: 80%;
+        object-fit: contain;
+        image-rendering: auto;
+        filter: drop-shadow(0 4px 20px rgba(0, 0, 0, 0.3));
+        transition: opacity 0.3s;
+      }
+
+      #avatar.pixel-art {
+        image-rendering: pixelated;
+      }
+
+      #avatar.idle {
+        animation: breathe 3s ease-in-out infinite;
+      }
+
+      #avatar.talking {
+        animation: none;
+      }
+      #avatar.talk-bounce {
+        animation: talk-bounce 0.12s ease-in-out;
+      }
+
+      #avatar.hidden {
+        opacity: 0;
+        pointer-events: none;
+      }
+
+      @keyframes breathe {
+        0%,
+        100% {
+          transform: translateY(0) scale(1);
+        }
+        50% {
+          transform: translateY(-5px) scale(1.012);
+        }
+      }
+
+      @keyframes talk-bounce {
+        0% {
+          transform: translateY(0) scale(1);
+        }
+        40% {
+          transform: translateY(-10px) scale(1.04);
+        }
+        100% {
+          transform: translateY(0) scale(1);
+        }
+      }
+
+      /* Connection lost indicator */
+      #status {
+        position: fixed;
+        top: 8px;
+        left: 8px;
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: #ef4444;
+        opacity: 0.6;
+        transition: background 0.3s;
+      }
+      #status.ok {
+        background: #22c55e;
+        opacity: 0;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="status"></div>
+    <img id="avatar" style="display: none" alt="" />
+
+    <script>
+      const avatar = document.getElementById("avatar");
+      const statusDot = document.getElementById("status");
+
+      let config = {};
+      let isTalking = false;
+      let isVisible = true;
+      let talkTimeout = null;
+      let bounceTimeout = null;
+      let ws = null;
+      let reconnectTimer = null;
+
+      const BASE_URL = location.origin;
+
+      // ── WebSocket Connection ──
+      function connect() {
+        ws = new WebSocket(`ws://${location.host}?role=overlay`);
+
+        ws.onopen = () => {
+          statusDot.classList.add("ok");
+          console.log("[Overlay] Connected");
+        };
+
+        ws.onmessage = (e) => {
+          try {
+            const msg = JSON.parse(e.data);
+
+            if (msg.type === "config") {
+              config = msg.data;
+              applyConfig();
+            }
+
+            if (msg.type === "audio") {
+              handleAudio(msg.volume);
+            }
+
+            if (msg.type === "set-visible") {
+              isVisible = msg.visible;
+              avatar.classList.toggle("hidden", !isVisible);
+            }
+
+            // Legacy support
+            if (msg.type === "toggle-visible") {
+              isVisible = !isVisible;
+              avatar.classList.toggle("hidden", !isVisible);
+            }
+          } catch (err) {
+            /* ignore */
+          }
+        };
+
+        ws.onclose = () => {
+          statusDot.classList.remove("ok");
+          console.log("[Overlay] Disconnected, reconnecting...");
+          reconnectTimer = setTimeout(connect, 2000);
+        };
+
+        ws.onerror = () => ws.close();
+      }
+
+      // ── Apply config to avatar ──
+      function applyConfig() {
+        const scale = config.scale || 80;
+        avatar.style.maxWidth = scale + "%";
+        avatar.style.maxHeight = scale + "%";
+
+        // Set the correct image
+        updateImage();
+      }
+
+      function getImageUrl(filename) {
+        if (!filename) return null;
+        return `${BASE_URL}/images/${filename}?t=${Date.now()}`;
+      }
+
+      function updateImage() {
+        const src =
+          isTalking && config.talkImage
+            ? getImageUrl(config.talkImage)
+            : getImageUrl(config.idleImage || config.talkImage);
+
+        if (src) {
+          avatar.style.display = "block";
+          // Only update src if changed (avoid flicker)
+          const cleanSrc = src.split("?")[0];
+          const cleanCurrent = (avatar.src || "").split("?")[0];
+          if (cleanSrc !== cleanCurrent) {
+            avatar.src = src;
+          }
+        } else {
+          avatar.style.display = "none";
+        }
+
+        updateAnimation();
+      }
+
+      function updateAnimation() {
+        avatar.classList.remove("idle", "talking");
+
+        if (isTalking) {
+          avatar.classList.add("talking");
+        } else if (config.breathe !== false) {
+          avatar.classList.add("idle");
+        }
+      }
+
+      // ── Handle audio volume from panel ──
+      function handleAudio(volume) {
+        const threshold = config.threshold || 15;
+        const closeDelay = config.closeDelay || 150;
+        const isAbove = volume > threshold;
+
+        if (isAbove) {
+          if (!isTalking) {
+            isTalking = true;
+            updateImage();
+
+            // Trigger bounce animation
+            if (config.bounce !== false) {
+              avatar.classList.remove("talk-bounce");
+              void avatar.offsetWidth; // reflow
+              avatar.classList.add("talk-bounce");
+              clearTimeout(bounceTimeout);
+              bounceTimeout = setTimeout(
+                () => avatar.classList.remove("talk-bounce"),
+                150,
+              );
+            }
+          }
+
+          clearTimeout(talkTimeout);
+          talkTimeout = setTimeout(() => {
+            isTalking = false;
+            updateImage();
+          }, closeDelay);
+        }
+      }
+
+      // ── Keyboard shortcut (for when interacting with OBS) ──
+      document.addEventListener("keydown", (e) => {
+        if (!config.hotkeyCode) return;
+        const match =
+          e.code === config.hotkeyCode &&
+          (config.hotkeyCtrl || false) === e.ctrlKey &&
+          (config.hotkeyAlt || false) === e.altKey &&
+          (config.hotkeyShift || false) === e.shiftKey;
+
+        if (match) {
+          e.preventDefault();
+          isVisible = !isVisible;
+          avatar.classList.toggle("hidden", !isVisible);
+        }
+      });
+
+      // ── Start ──
+      connect();
+    </script>
+  </body>
+</html>

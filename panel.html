@@ -1,0 +1,1241 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>PNGTuber - Panel de Control</title>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --bg: #08090f;
+        --bg-panel: #0d0f1a;
+        --bg-card: #141725;
+        --bg-input: #1a1e30;
+        --accent: #7c3aed;
+        --accent-glow: #a78bfa;
+        --accent-soft: rgba(124, 58, 237, 0.12);
+        --text: #e2e8f0;
+        --text-dim: #6b7394;
+        --border: #232842;
+        --success: #22c55e;
+        --warning: #f59e0b;
+        --danger: #ef4444;
+        --radius: 10px;
+      }
+
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      body {
+        font-family: "Outfit", sans-serif;
+        background: var(--bg);
+        color: var(--text);
+        min-height: 100vh;
+      }
+
+      .app {
+        display: grid;
+        grid-template-columns: 1fr 360px;
+        min-height: 100vh;
+      }
+
+      /* ── Preview ── */
+      .preview-area {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        background:
+          radial-gradient(
+            circle at 30% 40%,
+            rgba(124, 58, 237, 0.06) 0%,
+            transparent 50%
+          ),
+          repeating-conic-gradient(
+              rgba(255, 255, 255, 0.015) 0% 25%,
+              transparent 0% 50%
+            )
+            0 0 / 30px 30px;
+        position: relative;
+        padding: 40px;
+      }
+
+      .preview-label {
+        position: absolute;
+        top: 16px;
+        left: 20px;
+        font-size: 11px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 1.5px;
+        color: var(--text-dim);
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+
+      .preview-label .dot {
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        background: var(--danger);
+      }
+      .preview-label .dot.live {
+        background: var(--success);
+        animation: pulse 2s infinite;
+      }
+
+      @keyframes pulse {
+        0%,
+        100% {
+          opacity: 1;
+        }
+        50% {
+          opacity: 0.4;
+        }
+      }
+
+      #preview-avatar {
+        max-width: 350px;
+        max-height: 350px;
+        object-fit: contain;
+        filter: drop-shadow(0 8px 30px rgba(0, 0, 0, 0.4));
+      }
+      #preview-avatar.idle {
+        animation: breathe 3s ease-in-out infinite;
+      }
+      #preview-avatar.talk-bounce {
+        animation: talk-bounce 0.12s ease-in-out;
+      }
+
+      @keyframes breathe {
+        0%,
+        100% {
+          transform: translateY(0) scale(1);
+        }
+        50% {
+          transform: translateY(-5px) scale(1.012);
+        }
+      }
+      @keyframes talk-bounce {
+        0% {
+          transform: translateY(0) scale(1);
+        }
+        40% {
+          transform: translateY(-10px) scale(1.04);
+        }
+        100% {
+          transform: translateY(0) scale(1);
+        }
+      }
+
+      .preview-placeholder {
+        text-align: center;
+        color: var(--text-dim);
+      }
+      .preview-placeholder .emoji {
+        font-size: 80px;
+        margin-bottom: 12px;
+      }
+      .preview-placeholder p {
+        font-size: 13px;
+      }
+
+      .preview-volume {
+        position: absolute;
+        bottom: 30px;
+        width: 200px;
+        height: 6px;
+        background: var(--bg-card);
+        border-radius: 3px;
+        overflow: hidden;
+      }
+      .preview-volume-fill {
+        height: 100%;
+        width: 0%;
+        border-radius: 3px;
+        background: var(--accent);
+        transition:
+          width 0.05s,
+          background 0.15s;
+      }
+      .preview-volume-fill.active {
+        background: var(--success);
+      }
+
+      .talk-state {
+        position: absolute;
+        bottom: 48px;
+        font-size: 11px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        color: var(--text-dim);
+        transition: color 0.15s;
+      }
+      .talk-state.active {
+        color: var(--success);
+      }
+
+      /* ── Sidebar ── */
+      .sidebar {
+        background: var(--bg-panel);
+        border-left: 1px solid var(--border);
+        overflow-y: auto;
+        padding: 20px;
+      }
+      .sidebar::-webkit-scrollbar {
+        width: 5px;
+      }
+      .sidebar::-webkit-scrollbar-track {
+        background: transparent;
+      }
+      .sidebar::-webkit-scrollbar-thumb {
+        background: var(--border);
+        border-radius: 3px;
+      }
+
+      .sidebar-header {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-bottom: 20px;
+        padding-bottom: 16px;
+        border-bottom: 1px solid var(--border);
+      }
+      .sidebar-header h1 {
+        font-size: 18px;
+        font-weight: 800;
+        letter-spacing: -0.3px;
+      }
+      .sidebar-header h1 span {
+        color: var(--accent-glow);
+      }
+      .sidebar-header .version {
+        font-size: 10px;
+        padding: 2px 8px;
+        background: var(--accent-soft);
+        color: var(--accent-glow);
+        border-radius: 20px;
+        font-weight: 600;
+      }
+
+      .section {
+        background: var(--bg-card);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        padding: 14px;
+        margin-bottom: 12px;
+      }
+      .section-title {
+        font-size: 11px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        color: var(--accent-glow);
+        margin-bottom: 12px;
+      }
+
+      .field {
+        margin-bottom: 12px;
+      }
+      .field:last-child {
+        margin-bottom: 0;
+      }
+      .field label {
+        display: block;
+        font-size: 12px;
+        font-weight: 600;
+        color: var(--text);
+        margin-bottom: 5px;
+      }
+      .hint {
+        font-size: 10px;
+        color: var(--text-dim);
+        margin-top: 3px;
+      }
+
+      /* Upload */
+      .upload-row {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 8px;
+      }
+      .upload-box {
+        border: 2px dashed var(--border);
+        border-radius: var(--radius);
+        padding: 12px 8px;
+        text-align: center;
+        cursor: pointer;
+        transition: all 0.2s;
+        min-height: 100px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+      }
+      .upload-box:hover {
+        border-color: var(--accent);
+        background: var(--accent-soft);
+      }
+      .upload-box.has-image {
+        border-style: solid;
+        border-color: var(--success);
+      }
+      .upload-box .icon {
+        font-size: 24px;
+        margin-bottom: 4px;
+      }
+      .upload-box .label {
+        font-size: 11px;
+        font-weight: 600;
+        color: var(--text);
+      }
+      .upload-box .sublabel {
+        font-size: 9px;
+        color: var(--text-dim);
+        margin-top: 1px;
+      }
+      .upload-box img {
+        max-width: 60px;
+        max-height: 60px;
+        object-fit: contain;
+        border-radius: 4px;
+      }
+      .upload-box input[type="file"] {
+        display: none;
+      }
+
+      /* Inputs */
+      select,
+      input[type="text"],
+      input[type="number"],
+      input[type="password"] {
+        width: 100%;
+        padding: 7px 10px;
+        background: var(--bg-input);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        color: var(--text);
+        font-family: "Outfit", sans-serif;
+        font-size: 12px;
+        outline: none;
+      }
+      select:focus,
+      input:focus {
+        border-color: var(--accent);
+      }
+      input[type="password"] {
+        letter-spacing: 2px;
+      }
+
+      .input-row {
+        display: grid;
+        grid-template-columns: 1fr 80px;
+        gap: 8px;
+      }
+
+      input[type="range"] {
+        -webkit-appearance: none;
+        width: 100%;
+        height: 5px;
+        background: var(--bg-input);
+        border-radius: 3px;
+        outline: none;
+      }
+      input[type="range"]::-webkit-slider-thumb {
+        -webkit-appearance: none;
+        width: 16px;
+        height: 16px;
+        border-radius: 50%;
+        background: var(--accent);
+        cursor: pointer;
+        border: 2px solid var(--bg-panel);
+      }
+
+      .slider-row {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+      .slider-row input[type="range"] {
+        flex: 1;
+      }
+      .slider-value {
+        font-size: 12px;
+        font-weight: 700;
+        color: var(--accent-glow);
+        min-width: 34px;
+        text-align: right;
+      }
+
+      .meter {
+        width: 100%;
+        height: 8px;
+        background: var(--bg-input);
+        border-radius: 4px;
+        overflow: hidden;
+        margin-top: 6px;
+        position: relative;
+      }
+      .meter-fill {
+        height: 100%;
+        width: 0%;
+        background: linear-gradient(
+          90deg,
+          var(--success),
+          var(--warning),
+          var(--danger)
+        );
+        border-radius: 4px;
+        transition: width 0.05s;
+      }
+      .meter-threshold {
+        position: absolute;
+        top: -2px;
+        bottom: -2px;
+        width: 2px;
+        background: var(--accent-glow);
+        border-radius: 1px;
+        transition: left 0.1s;
+      }
+
+      .toggle-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+      }
+      .toggle {
+        position: relative;
+        width: 38px;
+        height: 20px;
+        cursor: pointer;
+        flex-shrink: 0;
+      }
+      .toggle input {
+        display: none;
+      }
+      .toggle .sw {
+        position: absolute;
+        inset: 0;
+        background: var(--bg-input);
+        border-radius: 10px;
+        border: 1px solid var(--border);
+        transition: all 0.2s;
+      }
+      .toggle .sw::before {
+        content: "";
+        position: absolute;
+        width: 14px;
+        height: 14px;
+        border-radius: 50%;
+        background: var(--text-dim);
+        top: 2px;
+        left: 2px;
+        transition: all 0.2s;
+      }
+      .toggle input:checked + .sw {
+        background: var(--accent);
+        border-color: var(--accent);
+      }
+      .toggle input:checked + .sw::before {
+        transform: translateX(18px);
+        background: white;
+      }
+
+      .hotkey-row {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+      kbd {
+        display: inline-block;
+        padding: 3px 10px;
+        background: var(--bg-input);
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        font-family: "Outfit";
+        font-size: 12px;
+        font-weight: 600;
+        color: var(--text);
+      }
+      .hotkey-btn {
+        padding: 4px 12px;
+        background: var(--accent-soft);
+        border: 1px solid var(--accent);
+        border-radius: 6px;
+        color: var(--accent-glow);
+        font-family: "Outfit";
+        font-size: 11px;
+        font-weight: 600;
+        cursor: pointer;
+      }
+      .hotkey-btn:hover {
+        background: var(--accent);
+        color: white;
+      }
+      .hotkey-btn.recording {
+        background: var(--danger);
+        border-color: var(--danger);
+        color: white;
+        animation: pulse 0.6s infinite;
+      }
+
+      /* Status badges */
+      .badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 5px 12px;
+        border-radius: 20px;
+        font-size: 11px;
+        font-weight: 600;
+      }
+      .badge .dot {
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+      }
+      .badge-ok {
+        background: rgba(34, 197, 94, 0.1);
+        color: var(--success);
+        border: 1px solid rgba(34, 197, 94, 0.2);
+      }
+      .badge-ok .dot {
+        background: var(--success);
+      }
+      .badge-err {
+        background: rgba(239, 68, 68, 0.1);
+        color: var(--danger);
+        border: 1px solid rgba(239, 68, 68, 0.2);
+      }
+      .badge-err .dot {
+        background: var(--danger);
+      }
+      .badge-warn {
+        background: rgba(245, 158, 11, 0.1);
+        color: var(--warning);
+        border: 1px solid rgba(245, 158, 11, 0.2);
+      }
+      .badge-warn .dot {
+        background: var(--warning);
+      }
+
+      .btn {
+        padding: 6px 14px;
+        border-radius: 8px;
+        border: 1px solid var(--border);
+        font-family: "Outfit";
+        font-size: 12px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.15s;
+        background: var(--accent);
+        color: white;
+        border-color: var(--accent);
+      }
+      .btn:hover {
+        background: var(--accent-glow);
+      }
+      .btn-sm {
+        padding: 4px 10px;
+        font-size: 11px;
+      }
+
+      .obs-url {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        padding: 8px 10px;
+        background: var(--bg-input);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        margin-top: 8px;
+      }
+      .obs-url code {
+        flex: 1;
+        font-size: 11px;
+        color: var(--accent-glow);
+        font-family: monospace;
+        word-break: break-all;
+      }
+      .obs-url button {
+        padding: 4px 10px;
+        background: var(--accent);
+        border: none;
+        border-radius: 6px;
+        color: white;
+        font-family: "Outfit";
+        font-size: 10px;
+        font-weight: 600;
+        cursor: pointer;
+        white-space: nowrap;
+      }
+
+      @media (max-width: 750px) {
+        .app {
+          grid-template-columns: 1fr;
+        }
+        .preview-area {
+          min-height: 300px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="app">
+      <!-- Preview -->
+      <div class="preview-area">
+        <div class="preview-label">
+          <div class="dot" id="preview-dot"></div>
+          <span>Vista previa</span>
+        </div>
+        <div class="preview-placeholder" id="placeholder">
+          <div class="emoji">🐱</div>
+          <p>Sube tus imágenes para empezar</p>
+        </div>
+        <img id="preview-avatar" style="display: none" alt="" />
+        <div class="talk-state" id="talk-state">IDLE</div>
+        <div class="preview-volume">
+          <div class="preview-volume-fill" id="preview-vol"></div>
+        </div>
+      </div>
+
+      <!-- Settings -->
+      <div class="sidebar">
+        <div class="sidebar-header">
+          <h1>PNG<span>Tuber</span></h1>
+          <span class="version">v1.0</span>
+        </div>
+
+        <!-- OBS Connection -->
+        <div class="section">
+          <div class="section-title">📡 Conexión OBS</div>
+
+          <div class="field">
+            <div
+              style="
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                margin-bottom: 10px;
+              "
+            >
+              <div class="badge badge-err" id="obs-badge">
+                <div class="dot"></div>
+                <span id="obs-badge-text">Desconectado</span>
+              </div>
+              <button class="btn btn-sm" id="btn-reconnect">Reconectar</button>
+            </div>
+          </div>
+
+          <div class="field">
+            <label>Host y puerto</label>
+            <div class="input-row">
+              <input
+                type="text"
+                id="obs-host"
+                placeholder="localhost"
+                value="localhost"
+              />
+              <input
+                type="number"
+                id="obs-port"
+                placeholder="4455"
+                value="4455"
+              />
+            </div>
+          </div>
+
+          <div class="field">
+            <label>Contraseña (si configuraste una)</label>
+            <input
+              type="password"
+              id="obs-password"
+              placeholder="Dejar vacío si no hay"
+            />
+            <div class="hint">
+              OBS → Herramientas → Configuración de WebSocket
+            </div>
+          </div>
+
+          <div class="field">
+            <label>Micrófono en OBS</label>
+            <div style="display: flex; gap: 8px">
+              <select id="obs-input" style="flex: 1">
+                <option value="">Conecta a OBS primero...</option>
+              </select>
+              <button class="btn btn-sm" id="btn-refresh-inputs">↻</button>
+            </div>
+            <div class="hint">
+              Selecciona la fuente de audio que quieres monitorizar
+            </div>
+          </div>
+        </div>
+
+        <!-- Images -->
+        <div class="section">
+          <div class="section-title">🎨 Imágenes</div>
+          <div class="upload-row">
+            <div class="upload-box" id="box-idle">
+              <div class="icon">😐</div>
+              <div class="label">Callado</div>
+              <div class="sublabel">PNG transparente</div>
+              <input type="file" id="file-idle" accept="image/*" />
+            </div>
+            <div class="upload-box" id="box-talk">
+              <div class="icon">😮</div>
+              <div class="label">Hablando</div>
+              <div class="sublabel">PNG transparente</div>
+              <input type="file" id="file-talk" accept="image/*" />
+            </div>
+          </div>
+        </div>
+
+        <!-- Audio Sensitivity -->
+        <div class="section">
+          <div class="section-title">🔊 Sensibilidad</div>
+
+          <div class="field">
+            <label>Umbral de activación</label>
+            <div class="slider-row">
+              <input type="range" id="threshold" min="1" max="80" value="15" />
+              <span class="slider-value" id="threshold-val">15</span>
+            </div>
+            <div class="meter">
+              <div class="meter-fill" id="meter-fill"></div>
+              <div
+                class="meter-threshold"
+                id="meter-threshold"
+                style="left: 18.75%"
+              ></div>
+            </div>
+          </div>
+
+          <div class="field">
+            <label>Retardo boca (ms)</label>
+            <div class="slider-row">
+              <input
+                type="range"
+                id="close-delay"
+                min="50"
+                max="500"
+                value="150"
+              />
+              <span class="slider-value" id="delay-val">150</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Animation -->
+        <div class="section">
+          <div class="section-title">✨ Animación</div>
+
+          <div class="field">
+            <div class="toggle-row">
+              <label style="margin: 0; font-size: 12px"
+                >Respiración (idle)</label
+              >
+              <label class="toggle"
+                ><input type="checkbox" id="anim-breathe" checked />
+                <div class="sw"></div
+              ></label>
+            </div>
+          </div>
+
+          <div class="field">
+            <div class="toggle-row">
+              <label style="margin: 0; font-size: 12px">Rebote al hablar</label>
+              <label class="toggle"
+                ><input type="checkbox" id="anim-bounce" checked />
+                <div class="sw"></div
+              ></label>
+            </div>
+          </div>
+
+          <div class="field">
+            <label>Escala</label>
+            <div class="slider-row">
+              <input type="range" id="scale" min="20" max="150" value="80" />
+              <span class="slider-value" id="scale-val">80%</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Toggle Avatar -->
+        <div class="section">
+          <div class="section-title">👁️ Mostrar / Ocultar</div>
+
+          <div class="field">
+            <button
+              class="btn"
+              id="btn-toggle"
+              style="width: 100%; padding: 12px; font-size: 14px"
+            >
+              👁️ Ocultar Avatar
+            </button>
+            <div class="hint" style="margin-top: 8px">
+              También puedes usar:
+              <code style="color: var(--accent-glow); font-size: 11px"
+                >GET http://localhost:3377/api/toggle</code
+              ><br />
+              Ideal para Stream Deck, Touch Portal, o un script.
+            </div>
+          </div>
+
+          <div class="field" style="margin-top: 12px">
+            <label
+              >Fuente del overlay en OBS
+              <span style="font-weight: 400; color: var(--text-dim)"
+                >(opcional)</span
+              ></label
+            >
+            <div style="display: flex; gap: 8px">
+              <select id="obs-source" style="flex: 1">
+                <option value="">Sin vincular</option>
+              </select>
+              <button class="btn btn-sm" id="btn-refresh-sources">↻</button>
+            </div>
+            <div class="hint">
+              Si seleccionas la fuente del overlay, al pulsar el botón también
+              la oculta/muestra directamente en OBS.
+            </div>
+          </div>
+
+          <div
+            class="field"
+            style="
+              margin-top: 10px;
+              padding: 10px;
+              background: var(--bg-input);
+              border-radius: 8px;
+            "
+          >
+            <div
+              style="
+                font-size: 11px;
+                font-weight: 600;
+                color: var(--text);
+                margin-bottom: 6px;
+              "
+            >
+              💡 Tip: Hotkey nativo de OBS
+            </div>
+            <div class="hint" style="margin: 0; line-height: 1.6">
+              OBS → Ajustes → Atajos de teclado → busca tu fuente del overlay →
+              asigna una tecla a
+              <strong style="color: var(--text)">Mostrar</strong> y
+              <strong style="color: var(--text)">Ocultar</strong>. Esto funciona
+              siempre, incluso en juego a pantalla completa.
+            </div>
+          </div>
+        </div>
+
+        <!-- OBS URL -->
+        <div class="section" style="border-color: var(--accent)">
+          <div class="section-title">📺 URL para OBS</div>
+          <div class="hint">Añade esto como Browser Source (800×800):</div>
+          <div class="obs-url">
+            <code id="obs-url-text"></code>
+            <button onclick="copyOBSUrl()">Copiar</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      let config = {};
+      let ws = null;
+      let isTalking = false;
+      let talkTimeout = null;
+      let bounceTimeout = null;
+
+      const BASE = location.origin;
+      const previewAvatar = document.getElementById("preview-avatar");
+      const placeholder = document.getElementById("placeholder");
+      const previewVol = document.getElementById("preview-vol");
+      const meterFill = document.getElementById("meter-fill");
+      const meterThreshold = document.getElementById("meter-threshold");
+      const talkState = document.getElementById("talk-state");
+      const previewDot = document.getElementById("preview-dot");
+      const obsBadge = document.getElementById("obs-badge");
+      const obsBadgeText = document.getElementById("obs-badge-text");
+
+      document.getElementById("obs-url-text").textContent = `${BASE}/overlay`;
+
+      // ── WebSocket ──
+      function connect() {
+        ws = new WebSocket(`ws://${location.host}?role=panel`);
+
+        ws.onopen = () => {
+          previewDot.classList.add("live");
+        };
+
+        ws.onmessage = (e) => {
+          try {
+            const msg = JSON.parse(e.data);
+            if (msg.type === "config") {
+              config = msg.data;
+              applyConfigToUI();
+            }
+            if (msg.type === "obs-status") {
+              updateOBSStatus(msg.connected);
+            }
+            if (msg.type === "audio") {
+              handleAudio(msg.volume);
+            }
+          } catch (err) {}
+        };
+
+        ws.onclose = () => {
+          previewDot.classList.remove("live");
+          setTimeout(connect, 2000);
+        };
+
+        ws.onerror = () => ws.close();
+      }
+
+      function updateOBSStatus(connected) {
+        if (connected) {
+          obsBadge.className = "badge badge-ok";
+          obsBadgeText.textContent = "Conectado a OBS";
+          loadOBSInputs();
+          loadOBSSources();
+        } else {
+          obsBadge.className = "badge badge-err";
+          obsBadgeText.textContent = "Desconectado";
+        }
+      }
+
+      // ── Apply config ──
+      function applyConfigToUI() {
+        document.getElementById("obs-host").value =
+          config.obsHost || "localhost";
+        document.getElementById("obs-port").value = config.obsPort || 4455;
+        document.getElementById("obs-password").value =
+          config.obsPassword || "";
+
+        document.getElementById("threshold").value = config.threshold || 15;
+        document.getElementById("threshold-val").textContent =
+          config.threshold || 15;
+        document.getElementById("close-delay").value = config.closeDelay || 150;
+        document.getElementById("delay-val").textContent =
+          config.closeDelay || 150;
+        document.getElementById("anim-breathe").checked =
+          config.breathe !== false;
+        document.getElementById("anim-bounce").checked =
+          config.bounce !== false;
+        document.getElementById("scale").value = config.scale || 80;
+        document.getElementById("scale-val").textContent =
+          (config.scale || 80) + "%";
+        document.getElementById("hotkey-display").textContent =
+          config.hotkey || "F9";
+
+        updateMeterThreshold();
+        updatePreviewImage();
+        loadUploadPreviews();
+      }
+
+      function updateMeterThreshold() {
+        meterThreshold.style.left = ((config.threshold || 15) / 80) * 100 + "%";
+      }
+
+      // ── Preview ──
+      function getImgUrl(name) {
+        return name ? `${BASE}/images/${name}?t=${Date.now()}` : null;
+      }
+
+      function updatePreviewImage() {
+        const src =
+          isTalking && config.talkImage
+            ? getImgUrl(config.talkImage)
+            : getImgUrl(config.idleImage || config.talkImage);
+
+        if (src) {
+          previewAvatar.style.display = "block";
+          placeholder.style.display = "none";
+          previewAvatar.src = src;
+          updatePreviewAnim();
+        } else {
+          previewAvatar.style.display = "none";
+          placeholder.style.display = "block";
+        }
+      }
+
+      function updatePreviewAnim() {
+        previewAvatar.classList.remove("idle", "talk-bounce");
+        if (!isTalking && config.breathe !== false)
+          previewAvatar.classList.add("idle");
+      }
+
+      function loadUploadPreviews() {
+        setBoxPreview("box-idle", config.idleImage);
+        setBoxPreview("box-talk", config.talkImage);
+      }
+
+      function setBoxPreview(boxId, filename) {
+        const box = document.getElementById(boxId);
+        if (filename) {
+          box.classList.add("has-image");
+          let img = box.querySelector("img");
+          if (!img) {
+            box.querySelector(".icon")?.remove();
+            box.querySelector(".label")?.remove();
+            box.querySelector(".sublabel")?.remove();
+            img = document.createElement("img");
+            box.insertBefore(img, box.querySelector("input"));
+          }
+          img.src = getImgUrl(filename);
+        }
+      }
+
+      // ── Audio from server (via OBS) ──
+      function handleAudio(volume) {
+        const threshold = config.threshold || 15;
+        const closeDelay = config.closeDelay || 150;
+
+        previewVol.style.width = volume + "%";
+        meterFill.style.width = volume + "%";
+
+        if (volume > threshold) {
+          previewVol.classList.add("active");
+          if (!isTalking) {
+            isTalking = true;
+            updatePreviewImage();
+            talkState.textContent = "HABLANDO";
+            talkState.classList.add("active");
+
+            if (config.bounce !== false) {
+              previewAvatar.classList.remove("idle", "talk-bounce");
+              void previewAvatar.offsetWidth;
+              previewAvatar.classList.add("talk-bounce");
+              clearTimeout(bounceTimeout);
+              bounceTimeout = setTimeout(
+                () => previewAvatar.classList.remove("talk-bounce"),
+                150,
+              );
+            }
+          }
+          clearTimeout(talkTimeout);
+          talkTimeout = setTimeout(() => {
+            isTalking = false;
+            previewVol.classList.remove("active");
+            updatePreviewImage();
+            talkState.textContent = "IDLE";
+            talkState.classList.remove("active");
+          }, closeDelay);
+        }
+      }
+
+      // ── Send config ──
+      function sendConfig(partial) {
+        Object.assign(config, partial);
+        fetch("/api/config", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(partial),
+        });
+      }
+
+      // ── File Upload ──
+      async function uploadImage(file, type) {
+        const resp = await fetch(`/api/upload/${type}`, {
+          method: "POST",
+          headers: { "Content-Type": file.type || "image/png" },
+          body: file,
+        });
+        const data = await resp.json();
+        if (data.ok) {
+          config[`${type}Image`] = data.filename;
+          updatePreviewImage();
+          loadUploadPreviews();
+        }
+      }
+
+      document
+        .getElementById("box-idle")
+        .addEventListener("click", () =>
+          document.getElementById("file-idle").click(),
+        );
+      document
+        .getElementById("box-talk")
+        .addEventListener("click", () =>
+          document.getElementById("file-talk").click(),
+        );
+      document.getElementById("file-idle").addEventListener("change", (e) => {
+        if (e.target.files[0]) uploadImage(e.target.files[0], "idle");
+      });
+      document.getElementById("file-talk").addEventListener("change", (e) => {
+        if (e.target.files[0]) uploadImage(e.target.files[0], "talk");
+      });
+
+      // ── OBS Connection Controls ──
+      async function loadOBSInputs() {
+        try {
+          const resp = await fetch("/api/obs/inputs");
+          const data = await resp.json();
+          const sel = document.getElementById("obs-input");
+          sel.innerHTML =
+            '<option value="">Seleccionar fuente de audio...</option>';
+          if (data.inputs) {
+            data.inputs.forEach((name) => {
+              const o = document.createElement("option");
+              o.value = name;
+              o.textContent = name;
+              sel.appendChild(o);
+            });
+          }
+          if (config.obsInputName) sel.value = config.obsInputName;
+        } catch (e) {
+          console.error("Failed to load inputs:", e);
+        }
+      }
+
+      document
+        .getElementById("btn-reconnect")
+        .addEventListener("click", async () => {
+          const host = document.getElementById("obs-host").value || "localhost";
+          const port =
+            parseInt(document.getElementById("obs-port").value) || 4455;
+          const password = document.getElementById("obs-password").value || "";
+
+          sendConfig({ obsHost: host, obsPort: port, obsPassword: password });
+
+          obsBadge.className = "badge badge-warn";
+          obsBadgeText.textContent = "Conectando...";
+
+          // Give server time to reconnect
+          setTimeout(async () => {
+            const resp = await fetch("/api/obs/status");
+            const data = await resp.json();
+            updateOBSStatus(data.connected);
+          }, 2000);
+        });
+
+      document
+        .getElementById("btn-refresh-inputs")
+        .addEventListener("click", loadOBSInputs);
+
+      document.getElementById("obs-input").addEventListener("change", (e) => {
+        sendConfig({ obsInputName: e.target.value });
+      });
+
+      // Save OBS settings on blur
+      ["obs-host", "obs-port", "obs-password"].forEach((id) => {
+        document.getElementById(id).addEventListener("blur", () => {
+          sendConfig({
+            obsHost: document.getElementById("obs-host").value || "localhost",
+            obsPort:
+              parseInt(document.getElementById("obs-port").value) || 4455,
+            obsPassword: document.getElementById("obs-password").value || "",
+          });
+        });
+      });
+
+      // ── Sliders ──
+      document.getElementById("threshold").addEventListener("input", (e) => {
+        const v = parseInt(e.target.value);
+        document.getElementById("threshold-val").textContent = v;
+        config.threshold = v;
+        updateMeterThreshold();
+        sendConfig({ threshold: v });
+      });
+
+      document.getElementById("close-delay").addEventListener("input", (e) => {
+        const v = parseInt(e.target.value);
+        document.getElementById("delay-val").textContent = v;
+        sendConfig({ closeDelay: v });
+      });
+
+      document.getElementById("scale").addEventListener("input", (e) => {
+        const v = parseInt(e.target.value);
+        document.getElementById("scale-val").textContent = v + "%";
+        sendConfig({ scale: v });
+      });
+
+      document
+        .getElementById("anim-breathe")
+        .addEventListener("change", (e) => {
+          sendConfig({ breathe: e.target.checked });
+          updatePreviewAnim();
+        });
+
+      document.getElementById("anim-bounce").addEventListener("change", (e) => {
+        sendConfig({ bounce: e.target.checked });
+      });
+
+      // ── Toggle button ──
+      let avatarVisible = true;
+      document
+        .getElementById("btn-toggle")
+        .addEventListener("click", async () => {
+          const resp = await fetch("/api/toggle", { method: "POST" });
+          const data = await resp.json();
+          avatarVisible = data.visible;
+          updateToggleButton();
+        });
+
+      function updateToggleButton() {
+        const btn = document.getElementById("btn-toggle");
+        if (avatarVisible) {
+          btn.textContent = "👁️ Ocultar Avatar";
+          btn.style.background = "var(--accent)";
+        } else {
+          btn.textContent = "👁️‍🗨️ Mostrar Avatar";
+          btn.style.background = "var(--danger)";
+        }
+      }
+
+      // ── OBS Source picker ──
+      async function loadOBSSources() {
+        try {
+          const resp = await fetch("/api/obs/sources");
+          const data = await resp.json();
+          const sel = document.getElementById("obs-source");
+          sel.innerHTML = '<option value="">Sin vincular</option>';
+          if (data.sources) {
+            data.sources.forEach((name) => {
+              const o = document.createElement("option");
+              o.value = name;
+              o.textContent = name;
+              sel.appendChild(o);
+            });
+          }
+          if (config.obsSourceName) sel.value = config.obsSourceName;
+        } catch (e) {}
+      }
+
+      document
+        .getElementById("btn-refresh-sources")
+        .addEventListener("click", loadOBSSources);
+      document.getElementById("obs-source").addEventListener("change", (e) => {
+        sendConfig({ obsSourceName: e.target.value });
+      });
+
+      // Keyboard shortcut (works when panel is focused)
+      document.addEventListener("keydown", (e) => {
+        if (e.target.tagName === "INPUT" || e.target.tagName === "SELECT")
+          return;
+        if (e.key === "F9") {
+          e.preventDefault();
+          document.getElementById("btn-toggle").click();
+        }
+      });
+
+      function copyOBSUrl() {
+        navigator.clipboard.writeText(`${BASE}/overlay`);
+        event.target.textContent = "✓";
+        setTimeout(() => (event.target.textContent = "Copiar"), 1500);
+      }
+
+      // ── Init ──
+      connect();
+    </script>
+  </body>
+</html>
