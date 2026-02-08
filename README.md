@@ -1,6 +1,8 @@
-# PNGTuber - Avatar para OBS 🎮
+# PNGTuber - Avatar para OBS
 
 Avatar animado estilo PNGTuber que reacciona a tu micrófono. Panel de control separado del overlay.
+
+https://github.com/user-attachments/assets/7b31229c-8d52-40de-8cfe-0a673f664760
 
 ## Setup rápido
 
